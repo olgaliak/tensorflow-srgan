@@ -52,7 +52,7 @@ tf.app.flags.DEFINE_integer('learning_rate_half_life', 5000,
 tf.app.flags.DEFINE_bool('log_device_placement', False,
                          "Log the device where variables are placed.")
 
-tf.app.flags.DEFINE_integer('sample_size', 64,
+tf.app.flags.DEFINE_integer('sample_size', 128,
                             "Image sample size in pixels. Range [64,128]")
 
 tf.app.flags.DEFINE_integer('summary_period', 200,
