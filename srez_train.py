@@ -30,6 +30,33 @@ def _summarize_progress(train_data, feature, label, gene_output, batch, suffix, 
     scipy.misc.toimage(image, cmin=0., cmax=1.).save(filename)
     print("    Saved %s" % (filename,))
 
+def _save_output(train_data, feature, label, gene_output, batch, suffix, max_samples=8):
+    td = train_data
+
+    size = [label.shape[1], label.shape[2]]
+
+    nearest = tf.image.resize_nearest_neighbor(feature, size)
+    nearest = tf.maximum(tf.minimum(nearest, 1.0), 0.0)
+
+    bicubic = tf.image.resize_bicubic(feature, size)
+    bicubic = tf.maximum(tf.minimum(bicubic, 1.0), 0.0)
+
+    clipped = tf.maximum(tf.minimum(gene_output, 1.0), 0.0)
+
+    image = tf.concat([clipped], 2)
+
+    #image = image[0:max_samples, :, :, :]
+    #image = tf.concat([image[i, :, :, :] for i in range(max_samples)], 0)
+    image = td.sess.run(image)
+
+    for i in range(max_samples):
+        individImage = image[i, :, :, :]
+        imgFileName = "img{0}_{1}.png".format(batch, i)
+        imgFileName = os.path.join(FLAGS.train_dir, imgFileName)
+        scipy.misc.toimage(individImage, cmin=0., cmax=1.).save(imgFileName)
+
+    print("    Saved results to %s" % (FLAGS.train_dir,))
+
 def _save_checkpoint(train_data, batch):
     td = train_data
 
@@ -57,7 +84,7 @@ def _save_checkpoint(train_data, batch):
     saver = tf.train.Saver()
     saver.save(td.sess, newname)
 
-    print("    Checkpoint saved")
+    print("    Checkpoint saved, name {0}".format(newname))
 
 def train_model(train_data):
     td = train_data
@@ -112,3 +139,26 @@ def train_model(train_data):
 
     _save_checkpoint(td, batch)
     print('Finished training!')
+
+
+def test_model(train_data):
+    td = train_data
+
+    summaries = tf.summary.merge_all()
+    td.sess.run(tf.initialize_all_variables())
+    start_time = time.time()
+
+    batch = 0
+    done = False
+
+    while not done:
+        print("Processing batch {0}".format(batch))
+        test_feature, test_label = td.sess.run([td.features, td.labels])
+
+        # Show progress with test features
+        feed_dict = {td.gene_minput: test_feature}
+        gene_output = td.sess.run(td.gene_moutput, feed_dict=feed_dict)
+        _save_output(td, test_feature, test_label, gene_output, batch, 'out')
+        batch += 1
+
+    print('Finished testing!')

@@ -407,6 +407,7 @@ def create_model(sess, features, labels):
     cols      = int(features.get_shape()[2])
     channels  = int(features.get_shape()[3])
 
+    # TBD: change to variable shape
     gene_minput = tf.placeholder(tf.float32, shape=[FLAGS.batch_size, rows, cols, channels])
 
     # TBD: Is there a better way to instance the generator?
@@ -427,12 +428,35 @@ def create_model(sess, features, labels):
                 _discriminator_model(sess, features, disc_real_input)
 
         scope.reuse_variables()
-            
+
         disc_fake_output, _ = _discriminator_model(sess, features, gene_output)
 
     return [gene_minput,      gene_moutput,
             gene_output,      gene_var_list,
             disc_real_output, disc_fake_output, disc_var_list]
+
+
+def create_test_model(sess, features, labels):
+    # Generator
+    rows = int(features.get_shape()[1])
+    cols = int(features.get_shape()[2])
+    channels = int(features.get_shape()[3])
+
+    # TBD: change to variable shape
+    gene_minput = tf.placeholder(tf.float32, shape=[FLAGS.batch_size, rows, cols, channels])
+
+    # TBD: Is there a better way to instance the generator?
+    with tf.variable_scope('gene') as scope:
+        gene_output, gene_var_list = \
+            _generator_model(sess, features, labels, channels)
+
+        scope.reuse_variables()
+
+        gene_moutput, _ = _generator_model(sess, gene_minput, labels, channels)
+
+    return [gene_minput, gene_moutput,
+            gene_output, gene_var_list]
+
 
 def _downscale(images, K):
     """Differentiable image downscaling by a factor of K"""

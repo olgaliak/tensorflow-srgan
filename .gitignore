@@ -1,6 +1,6 @@
 __pycache__/
 checkpoint*/
-dataset/
+dataset*/
 train*/
 .idea/
 

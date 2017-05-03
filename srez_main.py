@@ -16,20 +16,26 @@ FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_integer('batch_size', 16,
                             "Number of samples per batch.")
 
+tf.app.flags.DEFINE_integer('batch_test_size', 16,
+                            "Number of samples per test batch.")
+
 tf.app.flags.DEFINE_string('checkpoint_dir', 'checkpoint',
                            "Output folder where checkpoints are dumped.")
 
-tf.app.flags.DEFINE_integer('checkpoint_period', 10000,
+tf.app.flags.DEFINE_integer('checkpoint_period', 100,
                             "Number of batches in between checkpoints")
 
 tf.app.flags.DEFINE_string('dataset', 'dataset',
                            "Path to the dataset directory.")
 
+tf.app.flags.DEFINE_string('dataset_test', 'dataset_test',
+                           "Path to the test dataset directory.")
+
 tf.app.flags.DEFINE_float('epsilon', 1e-8,
                           "Fuzz term to avoid numerical instability")
 
-tf.app.flags.DEFINE_string('run', 'demo',
-                            "Which operation to run. [demo|train]")
+tf.app.flags.DEFINE_string('run', 'demo', 'test'
+                            "Which operation to run. [demo|train|test]")
 
 tf.app.flags.DEFINE_float('gene_l1_factor', .90,
                           "Multiplier for generator L1 loss term")
@@ -64,7 +70,7 @@ tf.app.flags.DEFINE_string('train_dir', 'train',
 tf.app.flags.DEFINE_integer('train_time', 20,
                             "Time in minutes to train the model")
 
-def prepare_dirs(delete_train_dir=False):
+def prepare_dirs(delete_train_dir=False, isTest=False):
     # Create checkpoint dir (do not delete anything)
     if not tf.gfile.Exists(FLAGS.checkpoint_dir):
         tf.gfile.MakeDirs(FLAGS.checkpoint_dir)
@@ -80,10 +86,15 @@ def prepare_dirs(delete_train_dir=False):
        not tf.gfile.IsDirectory(FLAGS.dataset):
         raise FileNotFoundError("Could not find folder `%s'" % (FLAGS.dataset,))
 
-    filenames = tf.gfile.ListDirectory(FLAGS.dataset)
+    if isTest:
+        dataDir = FLAGS.dataset_test
+    else:
+        dataDir = FLAGS.dataset
+
+    filenames = tf.gfile.ListDirectory(dataDir)
     filenames = sorted(filenames)
     random.shuffle(filenames)
-    filenames = [os.path.join(FLAGS.dataset, f) for f in filenames]
+    filenames = [os.path.join(dataDir, f) for f in filenames]
 
     return filenames
 
@@ -103,6 +114,36 @@ def setup_tensorflow():
     summary_writer = tf.summary.FileWriter(FLAGS.train_dir, sess.graph)
 
     return sess, summary_writer
+
+def _test():
+    # Load checkpoint
+    if not tf.gfile.IsDirectory(FLAGS.checkpoint_dir):
+        raise FileNotFoundError("Could not find folder `%s'" % (FLAGS.checkpoint_dir,))
+
+    # Setup global tensorflow state
+    sess, summary_writer = setup_tensorflow()
+
+    # Prepare directories
+    filenames = prepare_dirs(delete_train_dir=False, isTest=True)
+
+    # Setup async input queues
+    features, labels = srez_input.setup_test_inputs(sess, filenames)
+
+
+    # Create and initialize model
+    [gene_minput, gene_moutput,
+     gene_output, gene_var_list] = \
+            srez_model.create_test_model(sess, features, labels)
+
+    # Restore variables from checkpoint
+    saver = tf.train.Saver()
+    filename = 'checkpoint_new.txt'
+    filename = os.path.join(FLAGS.checkpoint_dir, filename)
+    saver.restore(sess, filename)
+
+    # Train model
+    data = TrainData(locals())
+    srez_train.test_model(data)
 
 def _demo():
     # Load checkpoint
@@ -185,6 +226,8 @@ def main(argv=None):
         _demo()
     elif FLAGS.run == 'train':
         _train()
+    elif  FLAGS.run == 'test':
+        _test()
 
 if __name__ == '__main__':
   tf.app.run()
