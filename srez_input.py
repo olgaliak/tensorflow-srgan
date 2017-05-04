@@ -32,7 +32,7 @@ def setup_inputs(sess, filenames, image_size=None, capacity_factor=3):
 
     wiggle = 8
     off_x, off_y = 25-wiggle, 60-wiggle
-    crop_size = 128
+    crop_size = 512
     crop_size_plus = crop_size + 2*wiggle
     image = tf.image.crop_to_bounding_box(image, off_y, off_x, crop_size_plus, crop_size_plus)
     image = tf.random_crop(image, [crop_size, crop_size, 3])

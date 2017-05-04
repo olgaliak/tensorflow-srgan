@@ -11,7 +11,7 @@ for dirpath, _, filenames in os.walk(folder_images):
         image = os.path.abspath(os.path.join(dirpath, path_image))
         with Image.open(image) as img:
             width, heigth = img.size
-        if heigth < 200 or width < 200:
+        if heigth < 550 or width < 550:
             count = count + 1
             os.remove(image)
             size_images[path_image] = {'width': width, 'heigth': heigth}
